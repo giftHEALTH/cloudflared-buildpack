@@ -10,7 +10,7 @@ mkdir -p $BUILD_DIR/.profile.d
 
 # Download and install cloudflared
 echo "-----> Installing cloudflared"
-CLOUDFLARED_VERSION="2024.1.5"
+CLOUDFLARED_VERSION="2024.12.2"
 CLOUDFLARED_URL="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64"
 
 curl -L -s $CLOUDFLARED_URL -o $BUILD_DIR/bin/cloudflared
