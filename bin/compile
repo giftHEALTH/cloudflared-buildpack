@@ -1,0 +1,48 @@
+#!/bin/bash
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+
+# Create necessary directories
+mkdir -p $BUILD_DIR/bin
+mkdir -p $BUILD_DIR/.profile.d
+
+# Download and install cloudflared
+echo "-----> Installing cloudflared"
+CLOUDFLARED_VERSION="2024.1.5"
+CLOUDFLARED_URL="https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64"
+
+curl -L -s $CLOUDFLARED_URL -o $BUILD_DIR/bin/cloudflared
+chmod +x $BUILD_DIR/bin/cloudflared
+
+# Read the tunnel token from ENV_DIR during build
+if [ -f $ENV_DIR/CLOUDFLARE_TUNNEL_TOKEN ]; then
+    TUNNEL_TOKEN=$(cat $ENV_DIR/CLOUDFLARE_TUNNEL_TOKEN)
+    # Export the token so the profile script can access it
+    echo "export CLOUDFLARE_TUNNEL_TOKEN=\"$TUNNEL_TOKEN\"" > $BUILD_DIR/.profile.d/00_tunnel_token.sh
+    chmod +x $BUILD_DIR/.profile.d/00_tunnel_token.sh
+else
+    echo "-----> Warning: CLOUDFLARE_TUNNEL_TOKEN not set"
+fi
+
+# Create startup script
+cat << 'EOF' > $BUILD_DIR/.profile.d/01_cloudflared.sh
+#!/bin/bash
+
+if [ -z "$CLOUDFLARE_TUNNEL_TOKEN" ]; then
+    echo "Error: CLOUDFLARE_TUNNEL_TOKEN environment variable is not set"
+    exit 1
+fi
+
+# Start cloudflared in the background
+echo "Starting cloudflared tunnel..."
+$HOME/bin/cloudflared tunnel run --token "$CLOUDFLARE_TUNNEL_TOKEN" &
+
+# Store the PID for potential cleanup
+echo $! > $HOME/cloudflared.pid
+EOF
+
+chmod +x $BUILD_DIR/.profile.d/01_cloudflared.sh
+
+echo "-----> cloudflared buildpack installation completed"
